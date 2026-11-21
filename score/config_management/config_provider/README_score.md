@@ -8,17 +8,37 @@ Below you will see description and short snippet showing how to use the ConfigPr
 
 ### Creation of ConfigProvider
 
-ConfigProvider instance can be instantiated by its own factory class located at `score/config_management/config_provider/code/config_provider/factory/factory_socal_r20_11.h` with
-one of the following methods
+Create a `ConfigProvider` with either `ConfigProviderFactory` or `ConfigProviderBuilder`. The factory remains available for existing callers. The builder provides a fluent alternative for new code.
 
-- `ConfigProviderFactory::Create(token, timeout, memory_resource, callback)`
-- `ConfigProviderFactory::Create(token, timeout, max_samples_limit, polling_cycle_interval, memory_resource, callback`
+#### ConfigProviderFactory
+
+Existing applications can continue to create a `ConfigProvider` with `ConfigProviderFactory::Create()`. For example:
+
+```c++
+#include "score/config_management/config_provider/code/config_provider/factory/factory_socal_r20_11.h"
+
+score::config_management::config_provider::ConfigProviderFactory config_provider_factory;
+auto config_provider = config_provider_factory.Create<Port>(
+    {}, std::chrono::milliseconds(0U), score::cpp::pmr::get_default_resource());
+```
+
+#### ConfigProviderBuilder
+
+Production code can instantiate `ConfigProviderBuilderImpl<Port>` from `score/config_management/config_provider/code/config_provider/builder/details/config_provider_builder_impl.h`, where `Port` is the application's generated `InternalConfigProvider` service port type. Each builder can build one `ConfigProvider`. `Build(token)` returns an `score::cpp::pmr::unique_ptr<ConfigProvider>`.
+
+- `WithConnectionTimeout(timeout)`
+- `WithMemoryResource(memory_resource)`
+- `WithAvailabilityNotificationCallback(callback)`
+- `WithMaxSamplesLimit(max_samples_limit)`
+- `WithPollingCycleInterval(polling_cycle_interval)`
+- `WithRequiredParameterSets(names)`
+- `Build(token)`
 
 Where:
 
 - token: stop token provided by user.
-- timeout: represents the time delay in ms that factory will wait for ConfigProvider service to be discovered. The service discovery will continue automatically, if the service could not be discovered within given timeout. If no delay is needed this parameter should be set to 0.
-- memory_resource: std::pmr::memory_resource provided by user.
+- timeout: maximum time in milliseconds that `Build()` waits for the ConfigProvider service to connect. Service discovery continues after this timeout. Set it to 0 to return without waiting.
+- memory_resource: `score::pmr::memory_resource*` provided by the user.
 - callback: will be called when the ConfigProvider service is created and becomes available.
 - max_samples_limit: Maximum number of ParameterSets which can be retrieved from `ConfigDaemon` during one cycle of PollingRoutine.
 - polling_cycle_interval: Time interval between PollingRoutine cycles in milliseconds.
@@ -26,13 +46,34 @@ Where:
 Example:
 
 ```c++
-score::config_management::config_provider::ConfigProviderFactory config_provider_factory;
+#include "score/config_management/config_provider/code/config_provider/builder/details/config_provider_builder_impl.h"
+
+score::config_management::config_provider::ConfigProviderBuilderImpl<Port> config_provider_builder;
 bool callback_is_called_upon_found{false};
-IsAvailableNotificationCallback callback{
+AvailabilityNotificationCallback callback{
     [&callback_is_called_upon_found]() noexcept { callback_is_called_upon_found = true; }};
-auto config_provider = config_provider_factory.Create<Port>(
-    {}, std::chrono::milliseconds(0U), score::cpp::pmr::get_default_resource(), std::move(callback));
+auto config_provider = config_provider_builder.WithConnectionTimeout(std::chrono::milliseconds(0U))
+                           .WithMemoryResource(score::cpp::pmr::get_default_resource())
+                           .WithAvailabilityNotificationCallback(std::move(callback))
+                           .Build({});
 ```
+
+### Buffer size allocation
+
+`GetParameterSet` is a semi-dynamic mw::com method (see the [design rationale](detailed_design/design_rational_of_migration_to_mw_com_ipc.md)). Its shared memory pool must hold the requested ParameterSet name and the returned payload, and the pool size is fixed when the proxy is created. The factory therefore reads `buffer_size_report.json` and sizes the pool as follows.
+
+- The payload size is the largest buffer size among the ParameterSets in `initial_parameter_set_name_list`. It is never smaller than `kMinParameterSetContentBufferSize`.
+- The name size is the longest name in `initial_parameter_set_name_list`.
+- One extra byte is added for each of the two as a null terminator budget.
+
+If `initial_parameter_set_name_list` is not provided (deprecated overloads), every ParameterSet in the report is considered.
+
+The report is produced by the [buffer_size_calculator](../tools/buffer_size_calculator/README.md) and deployed with the ConfigDaemon config files to `/platform/opt/ConfigDaemon/etc/buffer_size_report.json` (`kDefaultBufferSizeReportPath`).
+
+Error handling:
+
+- A name in `initial_parameter_set_name_list` without an entry in the report is logged and ignored.
+- If the report is missing or malformed, the error is logged and ConfigProvider still starts with the minimum payload size and a name size of 0. In this case `GetParameterSet` fails for each call, so the report must be present in production.
 
 ### InitialQualifierState
 
@@ -43,7 +84,7 @@ To find out the value of InitialQualifierState can be used:
 Example:
 
 ```c++
-auto initial_qualifier_state = config_provider.GetInitialQualifierState();
+auto initial_qualifier_state = config_provider->GetInitialQualifierState(std::chrono::milliseconds{1000});
 ```
 
 NOTE: Callback method is not supported for InitialQualifierState.
@@ -64,11 +105,11 @@ To get/subcribe ParameterSet can be used:
 Example:
 
 ```c++
-auto parameter_set_result = config_provider.GetParameterSet("set_name");
+auto parameter_set_result = config_provider->GetParameterSet("set_name", std::chrono::milliseconds{1000});
 if (parameter_set_result.has_value())
 {
-    Result<std::shared_ptr<const ParameterSet>> parameter_set = parameter_set_result.value();
-    bool subscription_result = config_provider.OnChangedParameterSet(
+    auto parameter_set = parameter_set_result.value();
+    auto subscription_result = config_provider->OnChangedParameterSet(
         "set_name",
         [&parameter_set](std::shared_ptr<const ParameterSet> value) noexcept
     {
@@ -87,6 +128,8 @@ else
   - Path:
     - `score/config_management/config_provider/code/config_provider/details/config_provider_impl_test.cpp`
     - `score/config_management/config_provider/code/config_provider/factory/factory_mw_com_test.cpp`
+    - `score/config_management/config_provider/code/config_provider/factory/buffer_size_report_test.cpp`
+    - `score/config_management/config_provider/code/config_provider/factory/semi_dynamic_single_instantiation_strategy_test.cpp`
     - `score/config_management/config_provider/code/parameter_set/parameter_set_test.cpp`
     - `score/config_management/config_provider/code/proxies/details/internal_config_provider_impl_test.cpp`
   - Cmd: `bazel test //score/config_management/config_provider:unit_tests_host`
@@ -94,7 +137,8 @@ else
 #### Bazel
 
 On your target add the following dependencies.\
-`"//score/config_management/config_provider"`
+`"//score/config_management/config_provider"`\
+For unit tests of your own code, use `"//score/config_management/config_provider:config_provider_factory_for_unit_test"` to inject a fake discovery strategy without a mw::com runtime.
 
 ConfigProvider visibility is:
  `"//visibility:public",`

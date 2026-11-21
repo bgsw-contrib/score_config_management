@@ -30,11 +30,13 @@ cc_library(
         "//score/config_management/config_daemon/code/data_model:parameterset_collection_manager",
         "//score/config_management/config_daemon/code/data_model/details:parameterset_collection_manager_impl",
         "//score/config_management/config_daemon/code/factory:interface",
+        "//score/config_management/config_daemon/code/initial_qualifier_container/details",
+        "//score/config_management/config_daemon/code/services",
         "@score_baselibs//score/concurrency:interruptible_wait",
         "@score_baselibs//score/json",
+        "@score_baselibs//score/mw/log:frontend",
         "@score_baselibs//score/scope_exit",
         "@score_lifecycle//score/launch_manager:application_cc",
-        "@score_logging//score/mw/log",
     ],
 )
 
@@ -53,12 +55,13 @@ cc_library(
         "//score/config_management/config_daemon/code/data_model/details:parameterset_collection_manager_impl",
         "//score/config_management/config_daemon/code/factory:interface_for_unit_test",
         "//score/config_management/config_daemon/code/fault_event_reporter",
+        "//score/config_management/config_daemon/code/initial_qualifier_container/details",
+        "//score/config_management/config_daemon/code/services",
         "@score_baselibs//score/concurrency:interruptible_wait",
         "@score_baselibs//score/json",
         "@score_baselibs//score/scope_exit",
         "@score_lifecycle//score/launch_manager:application_cc",
         "@score_lifecycle//score/launch_manager:mock_application_context_cc",
-        "@score_logging//score/mw/log",
     ],
 )
 

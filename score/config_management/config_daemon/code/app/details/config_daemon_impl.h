@@ -17,10 +17,11 @@
 #include "score/config_management/config_daemon/code/data_model/parameterset_collection_manager.h"
 #include "score/config_management/config_daemon/code/factory/factory.h"
 #include "score/config_management/config_daemon/code/fault_event_reporter/fault_event_reporter.h"
+#include "score/config_management/config_daemon/code/initial_qualifier_container/details/initial_qualifier_container_impl.h"
 #include "score/config_management/config_daemon/code/plugins/plugin.h"
 
-#include "score/mw/log/logger.h"
 #include "score/mw/service/provided_services_container.h"
+#include "score/mw/log/logger.h"
 #include "score/result/result.h"
 
 #include <memory>
@@ -51,11 +52,12 @@ class ConfigDaemon final : public IConfigDaemon
   private:
     std::int32_t PreparePlugins();
 
-    mw::log::Logger& logger_;
+    score::mw::log::Logger& logger_;
     std::unique_ptr<Factory> factory_;
     std::shared_ptr<data_model::IParameterSetCollectionManager> parameterset_collection_manager_;
     std::shared_ptr<fault_event_reporter::IFaultEventReporter> fault_event_reporter_;
     mw::service::ProvidedServicesContainer provided_services_container_;
+    InitialQualifierContainerImpl initial_qualifier_container_;
     std::vector<std::shared_ptr<IPlugin>> plugins_;
 };
 

@@ -14,8 +14,8 @@
 
 #include "score/config_management/config_daemon/code/plugins/demo_json/parameter_loader/details/demo_parameter_loader_impl.h"
 
-#include "score/mw/log/logging.h"
 #include "score/json/json_parser.h"
+#include "score/mw/log/logging.h"
 
 #include <cstdlib>
 #include <memory>
@@ -34,7 +34,7 @@ constexpr std::string_view kDemoParametersPath = "etc/demo_parameters.json";
 }
 
 DemoJsonPluginImpl::DemoJsonPluginImpl(std::unique_ptr<score::json::IJsonParser> json_parser) noexcept
-    : IPlugin{}, json_parser_{std::move(json_parser)}, logger_{mw::log::CreateLogger(std::string_view{"DemJ"})}
+    : IPlugin{}, json_parser_{std::move(json_parser)}, logger_{score::mw::log::CreateLogger(std::string_view{"DemJ"})}
 {
     logger_.LogInfo() << "DemoJson::" << __func__ << "- Created";
 }
@@ -49,7 +49,7 @@ void DemoJsonPluginImpl::Deinitialize() noexcept {}
 std::int32_t DemoJsonPluginImpl::Run(
     std::shared_ptr<data_model::IParameterSetCollectionManager> parameterset_collection_manager,
     [[maybe_unused]] LastUpdatedParameterSetSender,
-    [[maybe_unused]] InitialQualifierStateSender,
+    [[maybe_unused]] InitialQualifierContainer& initial_qualifier_container,
     [[maybe_unused]] score::cpp::stop_token,
     [[maybe_unused]] std::shared_ptr<fault_event_reporter::IFaultEventReporter>)
 {

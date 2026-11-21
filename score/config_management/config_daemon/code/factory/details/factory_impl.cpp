@@ -53,14 +53,14 @@ mw::service::ProvidedServicesContainer FactoryImpl::CreateInternalConfigProvider
             "InternalConfigProviderService", std::move(service_reactor), std::move(skeleton_result).value());
         if (!emplace_result.has_value())
         {
-            mw::log::LogError() << "FactoryImpl::" << __func__
-                                << ": Failed to start InternalConfigProviderService:" << emplace_result.error();
+            score::mw::log::LogError() << "FactoryImpl::" << __func__
+                                       << ": Failed to start InternalConfigProviderService:" << emplace_result.error();
         }
     }
     else
     {
-        mw::log::LogError() << "FactoryImpl::" << __func__
-                            << ": Failed to create InternalConfigProviderSkeleton:" << skeleton_result.error();
+        score::mw::log::LogError() << "FactoryImpl::" << __func__
+                                   << ": Failed to create InternalConfigProviderSkeleton:" << skeleton_result.error();
     }
     return services;
 }
@@ -77,18 +77,6 @@ LastUpdatedParameterSetSender FactoryImpl::CreateLastUpdatedParameterSetSender(
     return [](const std::string_view) noexcept -> bool {
         return false;
     };
-}
-
-InitialQualifierStateSender FactoryImpl::CreateInitialQualifierStateSender(
-    mw::service::ProvidedServicesContainer& services)
-{
-    if (auto* const service = services.Get<IInternalConfigProviderService>(); service != nullptr)
-    {
-        return [service](const config_daemon::InitialQualifierState initial_qualifier_state) noexcept -> void {
-            service->SetInitialQualifierState(initial_qualifier_state);
-        };
-    }
-    return [](const config_daemon::InitialQualifierState) noexcept -> void {};
 }
 
 std::shared_ptr<data_model::IParameterSetCollectionManager> FactoryImpl::CreateParameterSetCollectionManager(

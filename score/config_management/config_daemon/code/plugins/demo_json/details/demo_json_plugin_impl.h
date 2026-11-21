@@ -15,9 +15,10 @@
 
 #include "score/config_management/config_daemon/code/plugins/demo_json/parameter_loader/demo_parameter_loader.h"
 #include "score/config_management/config_daemon/code/plugins/plugin.h"
-#include "score/mw/log/logger.h"
+
 #include "score/json/i_json_parser.h"
 #include "score/json/json_parser.h"
+#include "score/mw/log/logger.h"
 
 #include <memory>
 
@@ -49,7 +50,7 @@ class DemoJsonPluginImpl final : public IPlugin
 
     std::int32_t Run(std::shared_ptr<data_model::IParameterSetCollectionManager> parameterset_collection_manager,
                      LastUpdatedParameterSetSender cbk_send_last_updated_parameter_set,
-                     InitialQualifierStateSender cbk_update_initial_qualifier_state,
+                     InitialQualifierContainer& initial_qualifier_container,
                      score::cpp::stop_token stop_token,
                      std::shared_ptr<fault_event_reporter::IFaultEventReporter> fault_event_reporter) override;
 
@@ -58,7 +59,7 @@ class DemoJsonPluginImpl final : public IPlugin
 
   private:
     std::unique_ptr<score::json::IJsonParser> json_parser_;
-    mw::log::Logger& logger_;
+    score::mw::log::Logger& logger_;
 };
 
 }  // namespace demo_json
